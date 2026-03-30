@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "fs";
-import { join } from "path";
+import { join, resolve } from "path";
 import { parse as parseYaml } from "yaml";
 
 export interface Config {
@@ -34,6 +34,10 @@ function parseDuration(s: string | undefined, defaultMs: number): number {
 }
 
 export function loadConfig(projectDir: string): Config {
+  projectDir = resolve(projectDir);
+  if (!existsSync(projectDir)) {
+    throw new Error(`Project directory does not exist: ${projectDir}`);
+  }
   const configPath = join(projectDir, "config.yaml");
   let raw: Record<string, any> = {};
   if (existsSync(configPath)) {
