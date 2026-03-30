@@ -1,8 +1,0 @@
-timberborn:
-  host: localhost
-  port: 8080
-poller:
-  interval: 5s
-  webhook_port: 9090
-history:
-  retention: 168h

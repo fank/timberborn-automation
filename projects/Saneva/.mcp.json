@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "timberborn": {
-      "command": "bun",
-      "args": ["../../src/server.ts", "--project", "."]
-    }
-  }
-}

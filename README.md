@@ -31,38 +31,30 @@ bun install
 
 ```bash
 mkdir -p projects/my-savegame
-cat > projects/my-savegame/config.yaml << 'EOF'
-timberborn:
-  host: localhost
-  port: 8080
-poller:
-  interval: 5s
-  webhook_port: 9090
-history:
-  retention: 168h
-EOF
+cp projects/example/config.yaml projects/my-savegame/
 ```
 
-### Register as an MCP channel
-
-Add to your Claude Code MCP config (`.mcp.json` in project root or `~/.claude.json` for global):
+Add a `.mcp.json` inside the project directory so Claude Code picks up the channel when you work from there:
 
 ```json
 {
   "mcpServers": {
     "timberborn": {
       "command": "bun",
-      "args": ["./src/server.ts", "--project", "projects/my-savegame"]
+      "args": ["../../src/server.ts", "--project", "."]
     }
   }
 }
 ```
 
-Start Claude Code with the development channel flag (required during research preview):
+Then start Claude Code from the project directory (required during research preview):
 
 ```bash
+cd projects/my-savegame
 claude --dangerously-load-development-channels server:timberborn
 ```
+
+The `history.db` and config live alongside your session — each savegame is a self-contained workspace.
 
 ## MCP Tools
 
