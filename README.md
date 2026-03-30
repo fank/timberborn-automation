@@ -31,7 +31,7 @@ bun install
 
 ```bash
 mkdir -p projects/my-savegame
-cp projects/example/config.yaml projects/my-savegame/
+cp projects/example/{config.yaml,CLAUDE.md} projects/my-savegame/
 ```
 
 Add a `.mcp.json` inside the project directory so Claude Code picks up the channel when you work from there:
