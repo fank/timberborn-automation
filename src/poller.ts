@@ -113,7 +113,7 @@ async function processDevice(
       if (result !== null) {
         await notify({
           watcherId: result.watcherId,
-          type: "watcher_triggered",
+          type: "watcher",
           deviceName: result.deviceName,
           message: result.message,
         });

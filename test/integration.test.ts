@@ -55,7 +55,7 @@ describe("integration: poller → store → tools", () => {
       [{ name: "Pump", state: false, springReturn: false }],
       store, mockNotify, pollerState
     );
-    const watcherEvents = events.filter((e) => e.type === "watcher_triggered");
+    const watcherEvents = events.filter((e) => e.type === "watcher");
     expect(watcherEvents).toHaveLength(0);
 
     // Step 6: Poll with both false — watcher SHOULD trigger
@@ -65,7 +65,7 @@ describe("integration: poller → store → tools", () => {
       [{ name: "Pump", state: false, springReturn: false }],
       store, mockNotify, pollerState
     );
-    const triggered = events.filter((e) => e.type === "watcher_triggered");
+    const triggered = events.filter((e) => e.type === "watcher");
     expect(triggered).toHaveLength(1);
     expect(triggered[0].watcherId).toBe("water-critical");
 
