@@ -53,7 +53,7 @@ export function loadConfig(projectDir: string): Config {
     },
     poller: {
       intervalMs: parseDuration(raw?.poller?.interval, 5000),
-      webhookPort: raw?.poller?.webhook_port ?? 9090,
+      webhookPort: raw?.poller?.webhook_port ?? 8081,
     },
     history: {
       retentionMs: parseDuration(raw?.history?.retention, 7 * 24 * 3_600_000),

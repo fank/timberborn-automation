@@ -17,16 +17,20 @@ export function startWebhookServer(
     hostname: "127.0.0.1",
     async fetch(req) {
       const url = new URL(req.url);
-      const pathMatch = url.pathname.match(/^\/webhook\/(.+)$/);
+      // Timberborn HTTP Adapter default callback URLs:
+      //   http://localhost:8081/on/{name}
+      //   http://localhost:8081/off/{name}
+      const pathMatch = url.pathname.match(/^\/(on|off)\/(.+)$/);
       if (!pathMatch) {
         return new Response("not found", { status: 404 });
       }
 
-      const adapterName = decodeURIComponent(pathMatch[1]);
+      const newState = pathMatch[1] === "on";
+      const adapterName = decodeURIComponent(pathMatch[2]);
       const existing = store.getDevice(adapterName);
 
       if (!existing) {
-        store.upsertDevice({ name: adapterName, type: "adapter", state: true });
+        store.upsertDevice({ name: adapterName, type: "adapter", state: newState });
         await notify({
           type: "device_discovered",
           deviceName: adapterName,
@@ -34,11 +38,7 @@ export function startWebhookServer(
         });
       }
 
-      let body: string | null = null;
-      try { body = await req.text(); } catch {}
-
       const previousState = existing ? existing.currentState === 1 : false;
-      const newState = true;
       if (newState !== previousState) {
         store.recordStateChange(adapterName, newState, "webhook");
       }

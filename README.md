@@ -116,7 +116,7 @@ timberborn:
   port: 8080         # Timberborn API port (default: 8080)
 poller:
   interval: 5s       # Poll frequency (default: 5s)
-  webhook_port: 9090 # Port for receiving HTTP Adapter webhooks (default: 9090)
+  webhook_port: 8081 # Port for receiving HTTP Adapter webhooks (default: 8081, matches Timberborn's default callback URL)
 history:
   retention: 168h    # How long to keep state history (default: 168h / 7 days)
 ```

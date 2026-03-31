@@ -3,6 +3,6 @@ timberborn:
   port: 8080
 poller:
   interval: 5s
-  webhook_port: 9090
+  webhook_port: 8081
 history:
   retention: 168h

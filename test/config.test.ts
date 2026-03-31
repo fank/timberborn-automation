@@ -35,7 +35,7 @@ history:
     expect(cfg.timberborn.host).toBe("localhost");
     expect(cfg.timberborn.port).toBe(8080);
     expect(cfg.poller.intervalMs).toBe(5000);
-    expect(cfg.poller.webhookPort).toBe(9090);
+    expect(cfg.poller.webhookPort).toBe(8081);
     expect(cfg.history.retentionMs).toBe(7 * 24 * 60 * 60 * 1000);
   });
 });
