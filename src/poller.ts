@@ -61,15 +61,16 @@ export async function pollOnce(
     await processDevice(lever.name, "lever", lever.state, lever.springReturn, store, notify);
   }
 
-  // Check for disappeared devices
-  const allDevices = store.listDevices();
-  for (const device of allDevices) {
+  // Check for disappeared devices (only active ones)
+  const activeDevices = store.listDevices();
+  for (const device of activeDevices) {
     if (seenNames.has(device.name)) continue;
 
     const missed = (state.missedPolls.get(device.name) ?? 0) + 1;
     state.missedPolls.set(device.name, missed);
 
     if (missed === 3) {
+      store.setDeviceStatus(device.name, "disappeared");
       await notify({
         type: "device_disappeared",
         deviceName: device.name,

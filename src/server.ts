@@ -10,7 +10,7 @@ import { Notifier } from "./notifier";
 import { pollOnce, type PollerState } from "./poller";
 import { evaluateDurationWatchers } from "./watcher";
 import { startWebhookServer } from "./webhook";
-import { listDevicesHandler, getDeviceHandler, annotateDeviceHandler } from "./tools/devices";
+import { listDevicesHandler, getDeviceHandler, removeDeviceHandler, annotateDeviceHandler } from "./tools/devices";
 import { queryHistoryHandler } from "./tools/history";
 import { switchLeverHandler } from "./tools/levers";
 import { createWatcherHandler, listWatchersHandler, deleteWatcherHandler } from "./tools/watchers";
@@ -52,12 +52,13 @@ const pollerState: PollerState = { missedPolls: new Map(), connected: true };
 const TOOLS = [
   {
     name: "list_devices",
-    description: "List all known Timberborn devices (adapters and levers)",
+    description: "List all known Timberborn devices (adapters and levers). By default only shows active devices.",
     inputSchema: {
       type: "object" as const,
       properties: {
         type: { type: "string", description: "Filter by type: 'adapter' or 'lever'" },
         group: { type: "string", description: "Filter by group name" },
+        include_disappeared: { type: "boolean", description: "Include disappeared devices (default: false)" },
       },
     },
   },
@@ -79,6 +80,17 @@ const TOOLS = [
         name: { type: "string", description: "Device name" },
         label: { type: "string", description: "Human-readable label (e.g. 'water > 50')" },
         group: { type: "string", description: "Group name (e.g. 'water-monitoring')" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "remove_device",
+    description: "Permanently remove a device from the database (e.g. after it was renamed or removed in-game)",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        name: { type: "string", description: "Device name to remove" },
       },
       required: ["name"],
     },
@@ -155,6 +167,7 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     case "list_devices": return listDevicesHandler(store, a);
     case "get_device": return getDeviceHandler(store, a);
     case "annotate_device": return annotateDeviceHandler(store, a);
+    case "remove_device": return removeDeviceHandler(store, a);
     case "query_history": return queryHistoryHandler(store, a);
     case "switch_lever": return switchLeverHandler(store, tbClient, a);
     case "create_watcher": return createWatcherHandler(store, a);

@@ -22,8 +22,8 @@ When a session begins:
 ## Available MCP Tools
 
 ### Reading State
-- **`list_devices`** `{type?, group?}` — list all adapters/levers, filter by type or group
-- **`get_device`** `{name}` — single device detail with current state and metadata
+- **`list_devices`** `{type?, group?, include_disappeared?}` — list all adapters/levers. Only shows active devices by default; set `include_disappeared: true` to see stale entries
+- **`get_device`** `{name}` — single device detail with current state, status, and metadata
 - **`query_history`** `{name?, group?, since?, until?, limit?}` — state change history over time
 - **`get_status`** `{}` — connectivity, device counts, recent events
 
@@ -32,6 +32,7 @@ When a session begins:
 
 ### Organizing
 - **`annotate_device`** `{name, label?, group?}` — label a device (e.g. "water > 50") and assign to a group (e.g. "water-monitoring")
+- **`remove_device`** `{name}` — permanently delete a stale device from the database (e.g. after rename or demolition in-game)
 
 ### Monitoring
 - **`create_watcher`** `{id, device_name?, group_name?, condition}` — register a condition that notifies you automatically
@@ -75,3 +76,4 @@ When you receive an event, assess the situation using `query_history` and `list_
 - Use duration watchers to detect slow declines — e.g. `state_false_duration > 10m` on a water sensor means water has been below that threshold for a sustained period.
 - After flipping a lever, check `query_history` to verify the expected downstream effects actually happened.
 - Ask the user to explain what each adapter/lever is connected to in-game so you can annotate accurately.
+- When a device disappears and a new one appears at the same time, the player likely renamed it in-game. Use `remove_device` to clean up the stale entry and annotate the new one fresh.

@@ -7,6 +7,7 @@ export interface DeviceRow {
   springReturn: number;
   label: string | null;
   groupName: string | null;
+  status: string;
   firstSeen: string;
   lastSeen: string;
 }
@@ -65,10 +66,19 @@ export class Store {
         spring_return INTEGER NOT NULL DEFAULT 0,
         label       TEXT,
         group_name  TEXT,
+        status      TEXT NOT NULL DEFAULT 'active',
         first_seen  TEXT NOT NULL,
         last_seen   TEXT NOT NULL
       )
     `);
+
+    // Migration: add status column to existing databases
+    const cols = this.db.query<{ name: string }, []>(
+      `PRAGMA table_info(devices)`
+    ).all();
+    if (!cols.some(c => c.name === "status")) {
+      this.db.run(`ALTER TABLE devices ADD COLUMN status TEXT NOT NULL DEFAULT 'active'`);
+    }
 
     this.db.run(`
       CREATE TABLE IF NOT EXISTS state_changes (
@@ -134,13 +144,13 @@ export class Store {
     const existing = this.getDevice(params.name);
     if (existing === null) {
       this.db.run(
-        `INSERT INTO devices (name, type, current_state, spring_return, first_seen, last_seen)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO devices (name, type, current_state, spring_return, status, first_seen, last_seen)
+         VALUES (?, ?, ?, ?, 'active', ?, ?)`,
         [params.name, params.type, stateInt, springReturnInt, now, now]
       );
     } else {
       this.db.run(
-        `UPDATE devices SET type = ?, current_state = ?, spring_return = ?, last_seen = ?
+        `UPDATE devices SET type = ?, current_state = ?, spring_return = ?, status = 'active', last_seen = ?
          WHERE name = ?`,
         [params.type, stateInt, springReturnInt, now, params.name]
       );
@@ -157,6 +167,7 @@ export class Store {
            spring_return  AS springReturn,
            label,
            group_name     AS groupName,
+           status,
            first_seen     AS firstSeen,
            last_seen      AS lastSeen
          FROM devices
@@ -166,10 +177,13 @@ export class Store {
     return row ?? null;
   }
 
-  listDevices(filter: { type?: string; group?: string } = {}): DeviceRow[] {
+  listDevices(filter: { type?: string; group?: string; includeDisappeared?: boolean } = {}): DeviceRow[] {
     const conditions: string[] = [];
     const values: string[] = [];
 
+    if (!filter.includeDisappeared) {
+      conditions.push("status = 'active'");
+    }
     if (filter.type !== undefined) {
       conditions.push("type = ?");
       values.push(filter.type);
@@ -189,12 +203,21 @@ export class Store {
            spring_return  AS springReturn,
            label,
            group_name     AS groupName,
+           status,
            first_seen     AS firstSeen,
            last_seen      AS lastSeen
          FROM devices
          ${where}`
       )
       .all(...values);
+  }
+
+  setDeviceStatus(name: string, status: "active" | "disappeared"): void {
+    this.db.run(`UPDATE devices SET status = ? WHERE name = ?`, [status, name]);
+  }
+
+  removeDevice(name: string): void {
+    this.db.run(`DELETE FROM devices WHERE name = ?`, [name]);
   }
 
   annotateDevice(name: string, label: string, groupName: string): void {
