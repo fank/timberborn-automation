@@ -1,4 +1,5 @@
 import type { Store } from "./store";
+import { evaluateWatcher } from "./watcher";
 
 type NotifyFn = (event: {
   watcherId?: string | null;
@@ -41,6 +42,20 @@ export function startWebhookServer(
       const previousState = existing ? existing.currentState === 1 : false;
       if (newState !== previousState) {
         store.recordStateChange(adapterName, newState, "webhook");
+
+        // Evaluate active watchers
+        const watchers = store.getActiveWatchers();
+        for (const watcher of watchers) {
+          const result = evaluateWatcher(watcher, adapterName, newState, previousState, store);
+          if (result !== null) {
+            await notify({
+              watcherId: result.watcherId,
+              type: "watcher",
+              deviceName: result.deviceName,
+              message: result.message,
+            });
+          }
+        }
       }
       store.upsertDevice({ name: adapterName, type: "adapter", state: newState });
 
