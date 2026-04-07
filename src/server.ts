@@ -299,6 +299,8 @@ await mcp.connect(new StdioServerTransport());
 
 startWebhookServer(config.poller.webhookPort, store, (e) => notifier.notify(e), (d, n, p) => ruleEngine.onStateChange(d, n, p));
 
+await ruleEngine.initialize();
+
 async function pollLoop() {
   while (true) {
     const adapters = await tbClient.getAdapters();

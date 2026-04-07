@@ -131,6 +131,41 @@ export class RuleEngine {
     private notify: NotifyFn
   ) {}
 
+  private needsResync(action: Action): boolean {
+    const switchAction =
+      action.type === "switch" ? action
+      : action.type === "sequence" ? action.actions.find(a => a.type === "switch")
+      : undefined;
+    if (switchAction === undefined || switchAction.type !== "switch") return false;
+    const lever = this.store.getDevice(switchAction.lever);
+    if (lever === null) return false;
+    const targetState = Boolean(switchAction.value ?? true);
+    return (lever.currentState === 1) !== targetState;
+  }
+
+  async initialize(): Promise<void> {
+    const rows = this.store.listRules({ enabled: true });
+
+    for (const row of rows) {
+      if (row.mode !== "edge") continue;
+
+      const condition: Condition = JSON.parse(row.condition_json);
+      const result = evaluateCondition(condition, this.store);
+      this.lastConditionResult.set(row.id, result);
+
+      if (!result) continue;
+
+      const action: Action = JSON.parse(row.action_json);
+      if (!this.needsResync(action)) continue;
+
+      const cooldownMs = row.cooldown_ms ?? 0;
+      if (cooldownMs > 0 && this.isCoolingDown(row.id, cooldownMs)) continue;
+
+      this.lastFired.set(row.id, Date.now());
+      await this.executeAction(action, row.id, null);
+    }
+  }
+
   isCoolingDown(ruleId: string, cooldownMs: number): boolean {
     const last = this.lastFired.get(ruleId);
     if (last === undefined) return false;
@@ -233,24 +268,17 @@ export class RuleEngine {
         if (referenced.size > 0 && !referenced.has(changedDevice)) continue;
 
         const result = evaluateCondition(condition, this.store);
-        const prev = this.lastConditionResult.get(row.id) ?? false;
+        const prev = this.lastConditionResult.get(row.id);
         this.lastConditionResult.set(row.id, result);
 
         if (!result) continue;
 
-        // Fire on false→true edge, OR if the lever is out of sync with the action
-        // (handles manual interventions and competing rules)
-        const isEdge = !prev;
-        const needsResync = action.type === "switch" || (action.type === "sequence" && action.actions.some(a => a.type === "switch"))
-          ? (() => {
-              const switchAction = action.type === "switch" ? action : action.actions.find(a => a.type === "switch")!;
-              if (switchAction.type !== "switch") return false;
-              const lever = this.store.getDevice(switchAction.lever);
-              if (lever === null) return false;
-              const targetState = Boolean(switchAction.value ?? true);
-              return (lever.currentState === 1) !== targetState;
-            })()
-          : false;
+        // Fire on false→true edge or first evaluation (undefined→true).
+        // Also fire if the lever is out of sync with the action (handles manual interventions).
+        // After startup, initialize() seeds lastConditionResult so undefined only occurs
+        // for newly created rules — which should fire on first true evaluation.
+        const isEdge = prev !== true;
+        const needsResync = this.needsResync(action);
 
         if (!isEdge && !needsResync) continue;
 

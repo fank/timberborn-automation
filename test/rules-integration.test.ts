@@ -69,10 +69,11 @@ describe("rules integration: poll → rule engine → lever switch", () => {
     expect(leverSwitches[0]).toEqual({ name: "Pump", on: true });
 
     // Clear and poll with WaterEmpty=false + WaterFull=true → should fire pump-off
+    // Pump state=true reflects that the previous rule switched it on
     leverSwitches.length = 0;
     await pollOnce(
       [{ name: "WaterEmpty", state: false }, { name: "WaterFull", state: true }],
-      [{ name: "Pump", state: false, springReturn: false }],
+      [{ name: "Pump", state: true, springReturn: false }],
       store, mockNotify, pollerState,
       (device, newState, prevState) => engine.onStateChange(device, newState, prevState)
     );
