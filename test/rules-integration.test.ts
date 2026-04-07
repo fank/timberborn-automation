@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from "bun:test";
+import { describe, it, expect, beforeEach, afterEach } from "bun:test";
 import { Store } from "../src/store";
 import { RuleEngine } from "../src/rule-engine";
 import { pollOnce, type PollerState } from "../src/poller";
+import { startWebhookServer } from "../src/webhook";
 import type { Adapter, Lever } from "../src/timberborn";
 
 let store: Store;
@@ -169,5 +170,110 @@ describe("rules integration: poll → rule engine → lever switch", () => {
     );
 
     expect(leverSwitches).toHaveLength(0);
+  });
+});
+
+describe("rules integration: webhook → rule engine → lever switch", () => {
+  let server: ReturnType<typeof Bun.serve>;
+  let port: number;
+
+  afterEach(() => {
+    server?.stop(true);
+  });
+
+  it("webhook updates store before calling onStateChange so rule engine reads fresh state", async () => {
+    const store = new Store(":memory:");
+    const switches: { name: string; on: boolean }[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push({ name, on: true }); return true; },
+      switchOff: async (name: string) => { switches.push({ name, on: false }); return true; },
+    };
+    const notify = async () => {};
+    const engine = new RuleEngine(store, client, notify);
+
+    // Pre-populate devices (as if discovered by a previous poll)
+    store.upsertDevice({ name: "WaterEmpty", type: "adapter", state: false });
+    store.upsertDevice({ name: "Pump", type: "lever", state: false });
+
+    // Create edge rule: WaterEmpty=true → switch Pump on
+    store.createRule({
+      id: "pump-on",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "WaterEmpty", state: true },
+      action: { type: "switch", lever: "Pump", value: true },
+      cooldownMs: null,
+    });
+
+    // Start webhook server wired to rule engine
+    port = 19876 + Math.floor(Math.random() * 1000);
+    server = startWebhookServer(port, store, notify, (d, n, p) => engine.onStateChange(d, n, p));
+
+    // Send webhook: WaterEmpty goes true
+    const res = await fetch(`http://127.0.0.1:${port}/on/WaterEmpty`);
+    expect(res.status).toBe(200);
+
+    // Rule should have fired because store was updated before onStateChange
+    expect(switches).toHaveLength(1);
+    expect(switches[0]).toEqual({ name: "Pump", on: true });
+
+    // Verify store has the updated state
+    const device = store.getDevice("WaterEmpty");
+    expect(device!.currentState).toBe(1);
+  });
+
+  it("webhook state change triggers rule engine for compound conditions", async () => {
+    const store = new Store(":memory:");
+    const switches: { name: string; on: boolean }[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push({ name, on: true }); return true; },
+      switchOff: async (name: string) => { switches.push({ name, on: false }); return true; },
+    };
+    const notify = async () => {};
+    const engine = new RuleEngine(store, client, notify);
+
+    // Pre-populate: PlankLow=true, LogLow=false, LumberMill=off
+    store.upsertDevice({ name: "PlankLow", type: "adapter", state: true });
+    store.upsertDevice({ name: "LogLow", type: "adapter", state: false });
+    store.upsertDevice({ name: "LumberMill", type: "lever", state: false });
+
+    // Compound rule: PlankLow AND NOT LogLow → switch LumberMill on
+    store.createRule({
+      id: "mill-on",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: {
+        type: "and",
+        conditions: [
+          { type: "device", name: "PlankLow", state: true },
+          { type: "not", condition: { type: "device", name: "LogLow", state: true } },
+        ],
+      },
+      action: { type: "switch", lever: "LumberMill", value: true },
+      cooldownMs: null,
+    });
+
+    // Seed baseline via initialize (PlankLow=true, LogLow=false → condition true, lever off → resync)
+    await engine.initialize();
+    expect(switches).toHaveLength(1);
+    switches.length = 0;
+
+    // Now LogLow goes true via webhook → condition becomes false
+    port = 19876 + Math.floor(Math.random() * 1000);
+    server = startWebhookServer(port, store, notify, (d, n, p) => engine.onStateChange(d, n, p));
+
+    await fetch(`http://127.0.0.1:${port}/on/LogLow`);
+
+    // Condition is now false, so no additional switch should fire
+    expect(switches).toHaveLength(0);
+
+    // LogLow goes false again via webhook → condition true again, lever should resync
+    store.upsertDevice({ name: "LumberMill", type: "lever", state: false }); // simulate manual off
+    await fetch(`http://127.0.0.1:${port}/off/LogLow`);
+
+    expect(switches).toHaveLength(1);
+    expect(switches[0]).toEqual({ name: "LumberMill", on: true });
   });
 });

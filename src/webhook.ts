@@ -110,11 +110,12 @@ export function startWebhookServer(
           }
         }
 
-        if (onStateChange) {
-          await onStateChange(adapterName, newState, previousState);
-        }
       }
       store.upsertDevice({ name: adapterName, type: "adapter", state: newState });
+
+      if (newState !== previousState && onStateChange) {
+        await onStateChange(adapterName, newState, previousState);
+      }
 
       return new Response("ok");
     },

@@ -480,6 +480,155 @@ describe("extractDeviceNames", () => {
   });
 });
 
+// ── RuleEngine.initialize() ─────────────────────────────────────────────────
+
+describe("RuleEngine.initialize — startup resync", () => {
+  it("fires switch action when condition is true but lever is out of sync", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    // Lever is OFF but condition is true → should resync to ON
+    store.upsertDevice({ name: "WaterEmpty", type: "adapter", state: true });
+    store.upsertDevice({ name: "Pump", type: "lever", state: false });
+    store.createRule({
+      id: "pump-on",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "WaterEmpty", state: true },
+      action: { type: "switch", lever: "Pump", value: true },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+
+    expect(switches).toEqual(["on:Pump"]);
+    const execs = store.getRuleExecutions("pump-on", 10);
+    expect(execs).toHaveLength(1);
+    expect(execs[0].success).toBe(1);
+  });
+
+  it("does not fire when condition is true and lever already matches", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    // Lever is already ON and condition is true → no resync needed
+    store.upsertDevice({ name: "WaterEmpty", type: "adapter", state: true });
+    store.upsertDevice({ name: "Pump", type: "lever", state: true });
+    store.createRule({
+      id: "pump-on",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "WaterEmpty", state: true },
+      action: { type: "switch", lever: "Pump", value: true },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+
+    expect(switches).toHaveLength(0);
+    expect(store.getRuleExecutions("pump-on", 10)).toHaveLength(0);
+  });
+
+  it("does not fire when condition is false", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    store.upsertDevice({ name: "WaterEmpty", type: "adapter", state: false });
+    store.upsertDevice({ name: "Pump", type: "lever", state: false });
+    store.createRule({
+      id: "pump-on",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "WaterEmpty", state: true },
+      action: { type: "switch", lever: "Pump", value: true },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+
+    expect(switches).toHaveLength(0);
+  });
+
+  it("seeds lastConditionResult so subsequent edge detection works correctly", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    // Condition is true and lever already matches action target → no resync at init
+    store.upsertDevice({ name: "WaterFull", type: "adapter", state: true });
+    store.upsertDevice({ name: "Pump", type: "lever", state: false }); // already off, action wants off
+    store.createRule({
+      id: "pump-off",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "WaterFull", state: true },
+      action: { type: "switch", lever: "Pump", value: false },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+    expect(switches).toHaveLength(0);
+
+    // Now WaterFull goes false then true again — should fire as a real edge
+    store.upsertDevice({ name: "WaterFull", type: "adapter", state: false });
+    await engine.onStateChange("WaterFull", false, true);
+    store.upsertDevice({ name: "WaterFull", type: "adapter", state: true });
+    await engine.onStateChange("WaterFull", true, false);
+
+    expect(switches).toEqual(["off:Pump"]);
+  });
+
+  it("skips continuous rules", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    store.upsertDevice({ name: "A1", type: "adapter", state: true });
+    store.upsertDevice({ name: "L1", type: "lever", state: false });
+    store.createRule({
+      id: "cont-rule",
+      name: null,
+      group: null,
+      mode: "continuous",
+      condition: { type: "device", name: "A1", state: true },
+      action: { type: "switch", lever: "L1" },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+
+    // Continuous rules are not handled by initialize
+    expect(switches).toHaveLength(0);
+  });
+});
+
 describe("hasDurationCondition", () => {
   it("returns true when any node is a duration condition", () => {
     const cond: Condition = {
