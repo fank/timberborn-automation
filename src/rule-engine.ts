@@ -147,8 +147,6 @@ export class RuleEngine {
     const rows = this.store.listRules({ enabled: true });
 
     for (const row of rows) {
-      if (row.mode !== "edge") continue;
-
       const condition: Condition = JSON.parse(row.condition_json);
       const result = evaluateCondition(condition, this.store);
       this.lastConditionResult.set(row.id, result);
@@ -262,55 +260,29 @@ export class RuleEngine {
       const action: Action = JSON.parse(row.action_json);
       const cooldownMs = row.cooldown_ms ?? 0;
 
-      if (row.mode === "edge") {
-        // Only evaluate if the changed device is referenced in the condition
-        const referenced = extractDeviceNames(condition);
-        if (referenced.size > 0 && !referenced.has(changedDevice)) continue;
+      // Only evaluate if the changed device is referenced in the condition
+      const referenced = extractDeviceNames(condition);
+      if (referenced.size > 0 && !referenced.has(changedDevice)) continue;
 
-        const result = evaluateCondition(condition, this.store);
-        const prev = this.lastConditionResult.get(row.id);
-        this.lastConditionResult.set(row.id, result);
+      const result = evaluateCondition(condition, this.store);
+      const prev = this.lastConditionResult.get(row.id);
+      this.lastConditionResult.set(row.id, result);
 
-        if (!result) continue;
+      if (!result) continue;
 
-        // Fire on false→true edge or first evaluation (undefined→true).
-        // Also fire if the lever is out of sync with the action (handles manual interventions).
-        // After startup, initialize() seeds lastConditionResult so undefined only occurs
-        // for newly created rules — which should fire on first true evaluation.
-        const isEdge = prev !== true;
-        const needsResync = this.needsResync(action);
+      // Fire on false→true edge or first evaluation (undefined→true).
+      // Also fire if the lever is out of sync with the action (handles manual interventions).
+      // After startup, initialize() seeds lastConditionResult so undefined only occurs
+      // for newly created rules — which should fire on first true evaluation.
+      const isEdge = prev !== true;
+      const needsResync = this.needsResync(action);
 
-        if (!isEdge && !needsResync) continue;
+      if (!isEdge && !needsResync) continue;
 
-        if (cooldownMs > 0 && this.isCoolingDown(row.id, cooldownMs)) continue;
+      if (cooldownMs > 0 && this.isCoolingDown(row.id, cooldownMs)) continue;
 
-        this.lastFired.set(row.id, Date.now());
-        await this.executeAction(action, row.id, changedDevice);
-      } else if (row.mode === "continuous") {
-        // Only evaluate if the changed device is referenced in the condition
-        const referenced = extractDeviceNames(condition);
-        if (!referenced.has(changedDevice)) continue;
-
-        const result = evaluateCondition(condition, this.store);
-
-        // For continuous mode with a switch action, only fire if result differs from current lever state
-        if (action.type === "switch") {
-          const lever = this.store.getDevice(action.lever);
-          const currentLeverState = lever !== null ? lever.currentState === 1 : null;
-          if (currentLeverState !== null && result === currentLeverState) continue;
-        }
-
-        if (cooldownMs > 0 && this.isCoolingDown(row.id, cooldownMs)) continue;
-
-        this.lastFired.set(row.id, Date.now());
-
-        // For continuous switch, the lever tracks the condition result
-        if (action.type === "switch") {
-          await this.executeAction({ ...action, value: result }, row.id, changedDevice);
-        } else {
-          await this.executeAction(action, row.id, changedDevice);
-        }
-      }
+      this.lastFired.set(row.id, Date.now());
+      await this.executeAction(action, row.id, changedDevice);
     }
   }
 

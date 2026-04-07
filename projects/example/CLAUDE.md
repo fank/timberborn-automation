@@ -38,7 +38,7 @@ When a session begins:
 - **`remove_device`** `{name}` — permanently delete a stale device from the database (e.g. after rename or demolition in-game)
 
 ### Automation Rules
-- **`create_rule`** `{id, name?, group?, mode, condition, action, cooldown?}` — create an automation rule that the sidecar executes autonomously
+- **`create_rule`** `{id, name?, group?, condition, action, cooldown?}` — create an automation rule that the sidecar executes autonomously
 - **`list_rules`** `{group?, enabled?}` — list all rules
 - **`get_rule`** `{id}` — rule details + recent executions
 - **`update_rule`** `{id, ...fields}` — modify a rule
@@ -56,12 +56,9 @@ When a session begins:
 
 Rules let you define autonomous automation that the sidecar executes without your intervention. Use rules for deterministic logic; keep watchers for notifications that need your judgment.
 
-### Rule Modes
+### How Rules Work
 
-| Mode | Behavior | Use for |
-|------|----------|---------|
-| `edge` | Fires once on a state transition when condition is true | Hysteresis pairs (pump on/off at thresholds) |
-| `continuous` | Lever tracks the condition result — re-evaluates on every input change | Compound logic (run X when A AND NOT B) |
+Rules fire once on a false→true condition transition. Use hysteresis pairs (two rules with opposite thresholds) for on/off control, and compound conditions (AND/OR/NOT trees) for complex logic.
 
 ### Condition Types
 
@@ -79,7 +76,7 @@ Rules let you define autonomous automation that the sidecar executes without you
 
 | Type | Structure | Description |
 |------|-----------|-------------|
-| `switch` | `{type: "switch", lever, value?}` | Flip a lever (value required for edge; continuous tracks condition) |
+| `switch` | `{type: "switch", lever, value}` | Flip a lever on (true) or off (false) |
 | `notify` | `{type: "notify", message}` | Send notification to Claude |
 | `enable_group` | `{type: "enable_group", group}` | Enable all rules in a group |
 | `disable_group` | `{type: "disable_group", group}` | Disable all rules in a group |
@@ -89,9 +86,6 @@ Rules let you define autonomous automation that the sidecar executes without you
 
 **Hysteresis pair (edge rules):**
 Two edge rules controlling one lever at low/high thresholds. Example: "Water Empty → pump ON" + "Water Full → pump OFF".
-
-**Compound continuous (continuous rule):**
-A lever that tracks a boolean formula over multiple inputs — e.g. "run lumberyard when logs aren't low AND planks aren't full".
 
 **Drought override:**
 Use `disable_rules({group: "water"})` to pause water automation, then control pumps manually. Re-enable with `enable_rules` when drought ends. Or create an edge rule on a drought signal adapter that auto-disables the water group.
@@ -126,7 +120,7 @@ When you receive an event, assess the situation using `query_history` and `list_
 - **Adapters** are read-only sensors. They expose in-game signals (resource counters, weather, timers) as boolean on/off states. The player wires them in-game.
 - **Levers** are actuators you control. Switching them on/off triggers in-game automation (floodgates, production, alerts).
 - **Groups** are your organizational tool. Group related adapters together (e.g. all water sensors in "water") so you can set up group watchers like `all_false`.
-- **Rules** are your automation. Define conditions and actions, and the sidecar executes them autonomously. Use edge rules for on/off hysteresis, continuous rules for compound logic. Rules free you from monitoring routine state changes.
+- **Rules** are your automation. Define conditions and actions, and the sidecar executes them autonomously. Use edge rule pairs for on/off hysteresis and compound condition trees for complex logic. Rules free you from monitoring routine state changes.
 - **History** is your memory. The sidecar records every state transition and every rule execution. Use `query_history` to analyze trends, and `get_rule` to see recent rule executions.
 - All device states are **boolean** (on/off). Numeric values like water levels are represented by multiple adapters at different thresholds (e.g. "water > 50", "water > 25").
 
@@ -134,7 +128,7 @@ When you receive an event, assess the situation using `query_history` and `list_
 
 - **Prefer rules over watchers** for deterministic automation. Watchers notify you (costing context); rules act autonomously.
 - When multiple adapters at different thresholds exist for the same resource, group them and watch the pattern of which ones are true/false to infer the actual level range.
-- Use **edge rules** for hysteresis pairs (low threshold → on, high threshold → off). Use **continuous rules** when a lever should track a compound condition (e.g. run production when inputs available AND output not full).
+- Use **edge rule pairs** for hysteresis (low threshold → on, high threshold → off). Use compound conditions (AND/OR/NOT) for complex multi-input logic.
 - Use **cooldowns** on rules to suppress oscillation when sensors sit at threshold boundaries.
 - Use **rule groups** to organize rules by system (e.g. "water", "wood"). During emergencies like drought, `disable_rules({group: "water"})` lets you take manual control.
 - Use duration watchers or duration-condition rules to detect slow declines — e.g. `state_false_duration > 10m` on a water sensor means water has been below that threshold for a sustained period.

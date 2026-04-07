@@ -63,7 +63,7 @@ export type Action =
 export interface SwitchAction {
   type: "switch";
   lever: string;
-  value?: boolean; // required for edge mode; ignored for continuous (lever tracks condition)
+  value?: boolean;
 }
 
 export interface NotifyAction {
@@ -92,7 +92,6 @@ export interface Rule {
   id: string;
   name: string | null;
   group: string | null;
-  mode: "edge" | "continuous";
   condition: Condition;
   action: Action;
   cooldownMs: number | null;
@@ -106,7 +105,6 @@ export interface RuleRow {
   id: string;
   name: string | null;
   group_name: string | null;
-  mode: string;
   condition_json: string;
   action_json: string;
   cooldown_ms: number | null;

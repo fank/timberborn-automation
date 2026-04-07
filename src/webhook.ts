@@ -45,7 +45,6 @@ export function startWebhookServer(
             id: r.id,
             name: r.name,
             group: r.group_name,
-            mode: r.mode,
             condition: JSON.parse(r.condition_json),
             action: JSON.parse(r.action_json),
             cooldownMs: r.cooldown_ms,

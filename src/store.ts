@@ -134,7 +134,7 @@ export class Store {
         id            TEXT PRIMARY KEY,
         name          TEXT,
         group_name    TEXT,
-        mode          TEXT NOT NULL,
+        mode          TEXT NOT NULL DEFAULT 'edge',
         condition_json TEXT NOT NULL,
         action_json   TEXT NOT NULL,
         cooldown_ms   INTEGER,
@@ -444,20 +444,18 @@ export class Store {
     id: string;
     name: string | null;
     group: string | null;
-    mode: "edge" | "continuous";
     condition: Condition;
     action: Action;
     cooldownMs: number | null;
   }): void {
     const now = new Date().toISOString();
     this.db.run(
-      `INSERT INTO rules (id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      `INSERT INTO rules (id, name, group_name, condition_json, action_json, cooldown_ms, enabled, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
       [
         params.id,
         params.name,
         params.group,
-        params.mode,
         JSON.stringify(params.condition),
         JSON.stringify(params.action),
         params.cooldownMs,
@@ -469,7 +467,7 @@ export class Store {
   getRule(id: string): RuleRow | null {
     const row = this.db
       .query<RuleRow, [string]>(
-        `SELECT id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at
+        `SELECT id, name, group_name, condition_json, action_json, cooldown_ms, enabled, created_at
          FROM rules WHERE id = ?`
       )
       .get(id);
@@ -492,7 +490,7 @@ export class Store {
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     return this.db
       .query<RuleRow, (string | number)[]>(
-        `SELECT id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at
+        `SELECT id, name, group_name, condition_json, action_json, cooldown_ms, enabled, created_at
          FROM rules ${where} ORDER BY created_at ASC`
       )
       .all(...values);
@@ -503,7 +501,6 @@ export class Store {
     params: {
       name?: string | null;
       group?: string | null;
-      mode?: "edge" | "continuous";
       condition?: Condition;
       action?: Action;
       cooldownMs?: number | null;
@@ -515,7 +512,6 @@ export class Store {
 
     if (params.name !== undefined) { sets.push("name = ?"); values.push(params.name); }
     if (params.group !== undefined) { sets.push("group_name = ?"); values.push(params.group); }
-    if (params.mode !== undefined) { sets.push("mode = ?"); values.push(params.mode); }
     if (params.condition !== undefined) { sets.push("condition_json = ?"); values.push(JSON.stringify(params.condition)); }
     if (params.action !== undefined) { sets.push("action_json = ?"); values.push(JSON.stringify(params.action)); }
     if (params.cooldownMs !== undefined) { sets.push("cooldown_ms = ?"); values.push(params.cooldownMs); }

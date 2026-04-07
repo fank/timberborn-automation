@@ -240,7 +240,6 @@ function renderRuleCard(r, execs) {
   return '<div class="rule-card' + disabledCls + '">' +
     '<div class="rule-header">' +
       '<span class="rule-id">' + esc(r.id) + '</span>' +
-      pill(r.mode, r.mode === 'edge' ? 'edge' : 'cont') +
       pill(r.enabled ? 'enabled' : 'disabled', r.enabled ? 'en' : 'dis') +
       (r.group ? '<span class="rule-group">' + esc(r.group) + '</span>' : '') +
       (r.cooldownMs ? '<span class="rule-cooldown">\\u23f1 ' + cdMs(r.cooldownMs) + '</span>' : '') +

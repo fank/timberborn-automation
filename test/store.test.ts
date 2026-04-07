@@ -119,8 +119,7 @@ describe("rules", () => {
       id: "r1",
       name: "test rule",
       group: "water",
-      mode: "edge",
-      condition,
+           condition,
       action,
       cooldownMs: 10000,
     });
@@ -129,7 +128,6 @@ describe("rules", () => {
     expect(rule!.id).toBe("r1");
     expect(rule!.name).toBe("test rule");
     expect(rule!.group_name).toBe("water");
-    expect(rule!.mode).toBe("edge");
     expect(rule!.cooldown_ms).toBe(10000);
     expect(rule!.enabled).toBe(1);
     expect(JSON.parse(rule!.condition_json)).toEqual(condition);
@@ -139,8 +137,8 @@ describe("rules", () => {
   it("lists rules filtered by group", () => {
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "r1", name: null, group: "water", mode: "edge", condition: cond, action: act, cooldownMs: null });
-    store.createRule({ id: "r2", name: null, group: "wood", mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r1", name: null, group: "water", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r2", name: null, group: "wood", condition: cond, action: act, cooldownMs: null });
     const water = store.listRules({ group: "water" });
     expect(water).toHaveLength(1);
     expect(water[0].id).toBe("r1");
@@ -149,8 +147,8 @@ describe("rules", () => {
   it("lists only enabled rules", () => {
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "r1", name: null, group: null, mode: "edge", condition: cond, action: act, cooldownMs: null });
-    store.createRule({ id: "r2", name: null, group: null, mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r1", name: null, group: null, condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r2", name: null, group: null, condition: cond, action: act, cooldownMs: null });
     store.setRuleEnabled("r2", false);
     const enabled = store.listRules({ enabled: true });
     expect(enabled).toHaveLength(1);
@@ -160,7 +158,7 @@ describe("rules", () => {
   it("updates a rule", () => {
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "r1", name: "old", group: null, mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r1", name: "old", group: null, condition: cond, action: act, cooldownMs: null });
     const newCond: Condition = { type: "device", name: "A2", state: false };
     store.updateRule("r1", { name: "new", condition: newCond, cooldownMs: 5000 });
     const rule = store.getRule("r1");
@@ -172,7 +170,7 @@ describe("rules", () => {
   it("deletes a rule", () => {
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "r1", name: null, group: null, mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r1", name: null, group: null, condition: cond, action: act, cooldownMs: null });
     store.deleteRule("r1");
     expect(store.getRule("r1")).toBeNull();
   });
@@ -180,9 +178,9 @@ describe("rules", () => {
   it("enables/disables rules by group", () => {
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "r1", name: null, group: "water", mode: "edge", condition: cond, action: act, cooldownMs: null });
-    store.createRule({ id: "r2", name: null, group: "water", mode: "edge", condition: cond, action: act, cooldownMs: null });
-    store.createRule({ id: "r3", name: null, group: "wood", mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r1", name: null, group: "water", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r2", name: null, group: "water", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "r3", name: null, group: "wood", condition: cond, action: act, cooldownMs: null });
     store.setGroupEnabled("water", false);
     expect(store.getRule("r1")!.enabled).toBe(0);
     expect(store.getRule("r2")!.enabled).toBe(0);

@@ -169,14 +169,13 @@ const TOOLS = [
   },
   {
     name: "create_rule",
-    description: "Create an automation rule. Edge rules fire once on state transition. Continuous rules keep a lever tracking a boolean condition. Actions: switch (flip lever), notify (escalate to Claude), enable_group/disable_group (toggle rule groups), sequence (multiple actions).",
+    description: "Create an automation rule. Edge rules fire once on a false→true condition transition. Actions: switch (flip lever), notify (escalate to Claude), enable_group/disable_group (toggle rule groups), sequence (multiple actions).",
     inputSchema: {
       type: "object" as const,
       properties: {
         id: { type: "string", description: "Unique rule ID" },
         name: { type: "string", description: "Human-readable name" },
         group: { type: "string", description: "Rule group (for bulk enable/disable)" },
-        mode: { type: "string", enum: ["edge", "continuous"], description: "edge: fires once on transition. continuous: lever tracks condition." },
         condition: {
           type: "object",
           description: "Boolean condition tree. Types: device {name, state}, not {condition}, and {conditions[]}, or {conditions[]}, duration {name, state, duration}, group_all {group, state}, group_any {group, state}",
@@ -187,7 +186,7 @@ const TOOLS = [
         },
         cooldown: { type: "string", description: "Cooldown duration (e.g. '10s', '5m')" },
       },
-      required: ["id", "mode", "condition", "action"],
+      required: ["id", "condition", "action"],
     },
   },
   {
@@ -219,7 +218,6 @@ const TOOLS = [
         id: { type: "string", description: "Rule ID" },
         name: { type: "string" },
         group: { type: "string" },
-        mode: { type: "string", enum: ["edge", "continuous"] },
         condition: { type: "object" },
         action: { type: "object" },
         cooldown: { type: "string" },

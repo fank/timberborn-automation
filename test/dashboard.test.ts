@@ -45,7 +45,6 @@ describe("dashboard routes", () => {
       id: "r1",
       name: "test",
       group: "water",
-      mode: "edge",
       condition: { type: "device", name: "A1", state: true },
       action: { type: "switch", lever: "L1", value: true },
       cooldownMs: null,

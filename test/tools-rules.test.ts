@@ -34,7 +34,7 @@ describe("createRuleHandler", () => {
       id: "rule-1",
       name: "My Rule",
       group: "sensors",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
       cooldown: "30s",
@@ -47,40 +47,21 @@ describe("createRuleHandler", () => {
     expect(row).not.toBeNull();
     expect(row!.name).toBe("My Rule");
     expect(row!.group_name).toBe("sensors");
-    expect(row!.mode).toBe("edge");
     expect(row!.cooldown_ms).toBe(30_000);
     expect(row!.enabled).toBe(1);
-  });
-
-  it("creates a continuous rule without cooldown", () => {
-    const result = createRuleHandler(store, {
-      id: "rule-cont",
-      mode: "continuous",
-      condition: contCondition,
-      action: contAction,
-    });
-
-    expect(result.isError).toBeUndefined();
-
-    const row = store.getRule("rule-cont");
-    expect(row).not.toBeNull();
-    expect(row!.mode).toBe("continuous");
-    expect(row!.cooldown_ms).toBeNull();
-    expect(row!.name).toBeNull();
-    expect(row!.group_name).toBeNull();
   });
 
   it("rejects duplicate id", () => {
     createRuleHandler(store, {
       id: "rule-dup",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
 
     const result = createRuleHandler(store, {
       id: "rule-dup",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
@@ -92,7 +73,7 @@ describe("createRuleHandler", () => {
   it("rejects string value in switch action", () => {
     const result = createRuleHandler(store, {
       id: "bad-value",
-      mode: "edge",
+
       condition: edgeCondition,
       action: { type: "switch", lever: "L1", value: "off" },
     });
@@ -103,7 +84,7 @@ describe("createRuleHandler", () => {
   it("rejects string value inside sequence action", () => {
     const result = createRuleHandler(store, {
       id: "bad-seq",
-      mode: "edge",
+
       condition: edgeCondition,
       action: {
         type: "sequence",
@@ -125,14 +106,14 @@ describe("listRulesHandler", () => {
     createRuleHandler(store, {
       id: "rule-a",
       group: "groupA",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
     createRuleHandler(store, {
       id: "rule-b",
       group: "groupB",
-      mode: "continuous",
+
       condition: contCondition,
       action: contAction,
     });
@@ -182,7 +163,7 @@ describe("getRuleHandler", () => {
     createRuleHandler(store, {
       id: "rule-get",
       name: "Get Me",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
@@ -223,7 +204,7 @@ describe("updateRuleHandler", () => {
       id: "rule-upd",
       name: "Original",
       group: "g1",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
       cooldown: "1m",
@@ -274,7 +255,7 @@ describe("deleteRuleHandler", () => {
   it("deletes a rule", () => {
     createRuleHandler(store, {
       id: "rule-del",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
@@ -292,7 +273,7 @@ describe("testRuleHandler", () => {
     store.upsertDevice({ name: "Sensor 1", type: "adapter", state: true });
     createRuleHandler(store, {
       id: "rule-test",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
@@ -310,7 +291,7 @@ describe("testRuleHandler", () => {
     store.upsertDevice({ name: "Sensor 1", type: "adapter", state: false });
     createRuleHandler(store, {
       id: "rule-test-false",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
@@ -335,21 +316,21 @@ describe("enableRulesHandler / disableRulesHandler", () => {
     createRuleHandler(store, {
       id: "rule-g1-a",
       group: "group1",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
     createRuleHandler(store, {
       id: "rule-g1-b",
       group: "group1",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });
     createRuleHandler(store, {
       id: "rule-g2-a",
       group: "group2",
-      mode: "edge",
+
       condition: edgeCondition,
       action: edgeAction,
     });

@@ -43,7 +43,7 @@ describe("rules integration: poll → rule engine → lever switch", () => {
       id: "pump-on",
       name: "Pump ON when WaterEmpty",
       group: "water",
-      mode: "edge",
+
       condition: { type: "device", name: "WaterEmpty", state: true },
       action: { type: "switch", lever: "Pump", value: true },
       cooldownMs: null,
@@ -52,7 +52,7 @@ describe("rules integration: poll → rule engine → lever switch", () => {
       id: "pump-off",
       name: "Pump OFF when WaterFull",
       group: "water",
-      mode: "edge",
+
       condition: { type: "device", name: "WaterFull", state: true },
       action: { type: "switch", lever: "Pump", value: false },
       cooldownMs: null,
@@ -83,59 +83,6 @@ describe("rules integration: poll → rule engine → lever switch", () => {
     expect(leverSwitches[0]).toEqual({ name: "Pump", on: false });
   });
 
-  it("continuous rule: lumberyard tracks compound condition across multiple polls", async () => {
-    const pollerState: PollerState = { missedPolls: new Map(), connected: true };
-    const engine = new RuleEngine(store, mockClient, mockNotify);
-
-    // First poll discovers devices (LogLow=false, PlankHigh=false, Lumberyard=false)
-    const adapters: Adapter[] = [
-      { name: "LogLow", state: false },
-      { name: "PlankHigh", state: false },
-    ];
-    const levers: Lever[] = [{ name: "Lumberyard", state: false, springReturn: false }];
-    await pollOnce(adapters, levers, store, mockNotify, pollerState);
-
-    // Create continuous rule: AND(NOT LogLow=true, NOT PlankHigh=true) → switch Lumberyard
-    store.createRule({
-      id: "lumberyard-rule",
-      name: "Lumberyard continuous",
-      group: null,
-      mode: "continuous",
-      condition: {
-        type: "and",
-        conditions: [
-          { type: "not", condition: { type: "device", name: "LogLow", state: true } },
-          { type: "not", condition: { type: "device", name: "PlankHigh", state: true } },
-        ],
-      },
-      action: { type: "switch", lever: "Lumberyard" },
-      cooldownMs: null,
-    });
-
-    // First poll with rule active: no state change → no rule fires
-    // (devices are discovered, not changed from existing state)
-    expect(leverSwitches).toHaveLength(0);
-
-    // Second poll: PlankHigh becomes true → condition false, lever already off → no switch
-    await pollOnce(
-      [{ name: "LogLow", state: false }, { name: "PlankHigh", state: true }],
-      [{ name: "Lumberyard", state: false, springReturn: false }],
-      store, mockNotify, pollerState,
-      (device, newState, prevState) => engine.onStateChange(device, newState, prevState)
-    );
-    expect(leverSwitches).toHaveLength(0);
-
-    // Third poll: PlankHigh back to false → condition true, lever off → switch Lumberyard ON
-    await pollOnce(
-      [{ name: "LogLow", state: false }, { name: "PlankHigh", state: false }],
-      [{ name: "Lumberyard", state: false, springReturn: false }],
-      store, mockNotify, pollerState,
-      (device, newState, prevState) => engine.onStateChange(device, newState, prevState)
-    );
-    expect(leverSwitches).toHaveLength(1);
-    expect(leverSwitches[0]).toEqual({ name: "Lumberyard", on: true });
-  });
-
   it("disable_group stops rules from firing", async () => {
     const pollerState: PollerState = { missedPolls: new Map(), connected: true };
     const engine = new RuleEngine(store, mockClient, mockNotify);
@@ -152,7 +99,7 @@ describe("rules integration: poll → rule engine → lever switch", () => {
       id: "r-disabled",
       name: "Edge rule in water group",
       group: "water",
-      mode: "edge",
+
       condition: { type: "device", name: "A1", state: true },
       action: { type: "switch", lever: "SomeLever", value: true },
       cooldownMs: null,
@@ -200,7 +147,7 @@ describe("rules integration: webhook → rule engine → lever switch", () => {
       id: "pump-on",
       name: null,
       group: null,
-      mode: "edge",
+
       condition: { type: "device", name: "WaterEmpty", state: true },
       action: { type: "switch", lever: "Pump", value: true },
       cooldownMs: null,
@@ -243,7 +190,7 @@ describe("rules integration: webhook → rule engine → lever switch", () => {
       id: "mill-on",
       name: null,
       group: null,
-      mode: "edge",
+
       condition: {
         type: "and",
         conditions: [

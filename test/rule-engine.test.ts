@@ -311,8 +311,8 @@ describe("RuleEngine — enable_group action", () => {
     const engine = new RuleEngine(store, mockClient(), fn);
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "rg1", name: null, group: "water", mode: "edge", condition: cond, action: act, cooldownMs: null });
-    store.createRule({ id: "rg2", name: null, group: "water", mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "rg1", name: null, group: "water", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "rg2", name: null, group: "water", condition: cond, action: act, cooldownMs: null });
     store.setGroupEnabled("water", false);
     expect(store.getRule("rg1")!.enabled).toBe(0);
 
@@ -334,7 +334,7 @@ describe("RuleEngine — disable_group action", () => {
     const engine = new RuleEngine(store, mockClient(), fn);
     const cond: Condition = { type: "device", name: "A1", state: true };
     const act: Action = { type: "switch", lever: "L1", value: true };
-    store.createRule({ id: "rg3", name: null, group: "pumps", mode: "edge", condition: cond, action: act, cooldownMs: null });
+    store.createRule({ id: "rg3", name: null, group: "pumps", condition: cond, action: act, cooldownMs: null });
 
     const action: Action = { type: "disable_group", group: "pumps" };
     await engine.executeAction(action, "r6", null);
@@ -383,8 +383,7 @@ describe("RuleEngine — cooldown", () => {
       id: ruleId,
       name: null,
       group: null,
-      mode: "edge",
-      condition: cond,
+           condition: cond,
       action: act,
       cooldownMs: 60_000, // 1 minute
     });
@@ -417,8 +416,7 @@ describe("RuleEngine — edge rule scoping", () => {
       id: "pump-on",
       name: null,
       group: null,
-      mode: "edge",
-      condition: { type: "device", name: "WaterEmpty", state: true },
+           condition: { type: "device", name: "WaterEmpty", state: true },
       action: { type: "switch", lever: "Pump", value: true },
       cooldownMs: null,
     });
@@ -440,8 +438,7 @@ describe("RuleEngine — edge rule scoping", () => {
       id: "r1",
       name: null,
       group: null,
-      mode: "edge",
-      condition: { type: "device", name: "A1", state: true },
+           condition: { type: "device", name: "A1", state: true },
       action: { type: "switch", lever: "L1", value: true },
       cooldownMs: null,
     });
@@ -499,8 +496,7 @@ describe("RuleEngine.initialize — startup resync", () => {
       id: "pump-on",
       name: null,
       group: null,
-      mode: "edge",
-      condition: { type: "device", name: "WaterEmpty", state: true },
+           condition: { type: "device", name: "WaterEmpty", state: true },
       action: { type: "switch", lever: "Pump", value: true },
       cooldownMs: null,
     });
@@ -529,8 +525,7 @@ describe("RuleEngine.initialize — startup resync", () => {
       id: "pump-on",
       name: null,
       group: null,
-      mode: "edge",
-      condition: { type: "device", name: "WaterEmpty", state: true },
+           condition: { type: "device", name: "WaterEmpty", state: true },
       action: { type: "switch", lever: "Pump", value: true },
       cooldownMs: null,
     });
@@ -556,8 +551,7 @@ describe("RuleEngine.initialize — startup resync", () => {
       id: "pump-on",
       name: null,
       group: null,
-      mode: "edge",
-      condition: { type: "device", name: "WaterEmpty", state: true },
+           condition: { type: "device", name: "WaterEmpty", state: true },
       action: { type: "switch", lever: "Pump", value: true },
       cooldownMs: null,
     });
@@ -583,8 +577,7 @@ describe("RuleEngine.initialize — startup resync", () => {
       id: "pump-off",
       name: null,
       group: null,
-      mode: "edge",
-      condition: { type: "device", name: "WaterFull", state: true },
+           condition: { type: "device", name: "WaterFull", state: true },
       action: { type: "switch", lever: "Pump", value: false },
       cooldownMs: null,
     });
@@ -601,32 +594,6 @@ describe("RuleEngine.initialize — startup resync", () => {
     expect(switches).toEqual(["off:Pump"]);
   });
 
-  it("skips continuous rules", async () => {
-    const { fn } = mockNotify();
-    const switches: string[] = [];
-    const client = {
-      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
-      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
-    };
-    const engine = new RuleEngine(store, client, fn);
-
-    store.upsertDevice({ name: "A1", type: "adapter", state: true });
-    store.upsertDevice({ name: "L1", type: "lever", state: false });
-    store.createRule({
-      id: "cont-rule",
-      name: null,
-      group: null,
-      mode: "continuous",
-      condition: { type: "device", name: "A1", state: true },
-      action: { type: "switch", lever: "L1" },
-      cooldownMs: null,
-    });
-
-    await engine.initialize();
-
-    // Continuous rules are not handled by initialize
-    expect(switches).toHaveLength(0);
-  });
 });
 
 describe("hasDurationCondition", () => {

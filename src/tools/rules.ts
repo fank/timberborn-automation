@@ -61,14 +61,13 @@ export function createRuleHandler(store: Store, args: Record<string, unknown>) {
 
   const name = (args.name as string | undefined) ?? null;
   const group = (args.group as string | undefined) ?? null;
-  const mode = args.mode as "edge" | "continuous";
   const condition = args.condition as Condition;
   const action = args.action as Action;
   const actionErr = validateAction(action);
   if (actionErr) return error(actionErr);
   const cooldownMs = parseCooldown(args.cooldown as string | undefined);
 
-  store.createRule({ id, name, group, mode, condition, action, cooldownMs });
+  store.createRule({ id, name, group, condition, action, cooldownMs });
   return text(`Rule '${id}' created`);
 }
 
@@ -85,7 +84,6 @@ export function listRulesHandler(store: Store, args: Record<string, unknown>) {
     id: row.id,
     name: row.name,
     group: row.group_name,
-    mode: row.mode,
     condition: JSON.parse(row.condition_json) as Condition,
     action: JSON.parse(row.action_json) as Action,
     cooldownMs: row.cooldown_ms,
@@ -110,7 +108,6 @@ export function getRuleHandler(store: Store, args: Record<string, unknown>) {
     id: row.id,
     name: row.name,
     group: row.group_name,
-    mode: row.mode,
     condition: JSON.parse(row.condition_json) as Condition,
     action: JSON.parse(row.action_json) as Action,
     cooldownMs: row.cooldown_ms,
@@ -133,7 +130,6 @@ export function updateRuleHandler(store: Store, args: Record<string, unknown>) {
 
   if ("name" in args) params.name = (args.name as string | null) ?? null;
   if ("group" in args) params.group = (args.group as string | null) ?? null;
-  if ("mode" in args) params.mode = args.mode as "edge" | "continuous";
   if ("condition" in args) params.condition = args.condition as Condition;
   if ("action" in args) {
     const action = args.action as Action;
