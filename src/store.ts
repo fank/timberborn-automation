@@ -1,4 +1,5 @@
 import { Database } from "bun:sqlite";
+import type { Condition, Action, RuleRow, RuleExecutionRow } from "./rule-types";
 
 export interface DeviceRow {
   name: string;
@@ -126,6 +127,36 @@ export class Store {
         device_name TEXT,
         message     TEXT NOT NULL
       )
+    `);
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS rules (
+        id            TEXT PRIMARY KEY,
+        name          TEXT,
+        group_name    TEXT,
+        mode          TEXT NOT NULL,
+        condition_json TEXT NOT NULL,
+        action_json   TEXT NOT NULL,
+        cooldown_ms   INTEGER,
+        enabled       INTEGER NOT NULL DEFAULT 1,
+        created_at    TEXT NOT NULL
+      )
+    `);
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS rule_executions (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        rule_id         TEXT NOT NULL,
+        timestamp       TEXT NOT NULL,
+        trigger_device  TEXT,
+        action_summary  TEXT NOT NULL,
+        success         INTEGER NOT NULL
+      )
+    `);
+
+    this.db.run(`
+      CREATE INDEX IF NOT EXISTS idx_rule_executions_rule_ts
+        ON rule_executions (rule_id, timestamp)
     `);
   }
 
@@ -407,6 +438,131 @@ export class Store {
       .all(limit);
   }
 
+  // ── rules ────────────────────────────────────────────────────────────────
+
+  createRule(params: {
+    id: string;
+    name: string | null;
+    group: string | null;
+    mode: "edge" | "continuous";
+    condition: Condition;
+    action: Action;
+    cooldownMs: number | null;
+  }): void {
+    const now = new Date().toISOString();
+    this.db.run(
+      `INSERT INTO rules (id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [
+        params.id,
+        params.name,
+        params.group,
+        params.mode,
+        JSON.stringify(params.condition),
+        JSON.stringify(params.action),
+        params.cooldownMs,
+        now,
+      ]
+    );
+  }
+
+  getRule(id: string): RuleRow | null {
+    const row = this.db
+      .query<RuleRow, [string]>(
+        `SELECT id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at
+         FROM rules WHERE id = ?`
+      )
+      .get(id);
+    return row ?? null;
+  }
+
+  listRules(filter: { group?: string; enabled?: boolean } = {}): RuleRow[] {
+    const conditions: string[] = [];
+    const values: (string | number)[] = [];
+
+    if (filter.group !== undefined) {
+      conditions.push("group_name = ?");
+      values.push(filter.group);
+    }
+    if (filter.enabled !== undefined) {
+      conditions.push("enabled = ?");
+      values.push(filter.enabled ? 1 : 0);
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    return this.db
+      .query<RuleRow, (string | number)[]>(
+        `SELECT id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at
+         FROM rules ${where} ORDER BY created_at ASC`
+      )
+      .all(...values);
+  }
+
+  updateRule(
+    id: string,
+    params: {
+      name?: string | null;
+      group?: string | null;
+      mode?: "edge" | "continuous";
+      condition?: Condition;
+      action?: Action;
+      cooldownMs?: number | null;
+      enabled?: boolean;
+    }
+  ): void {
+    const sets: string[] = [];
+    const values: (string | number | null)[] = [];
+
+    if (params.name !== undefined) { sets.push("name = ?"); values.push(params.name); }
+    if (params.group !== undefined) { sets.push("group_name = ?"); values.push(params.group); }
+    if (params.mode !== undefined) { sets.push("mode = ?"); values.push(params.mode); }
+    if (params.condition !== undefined) { sets.push("condition_json = ?"); values.push(JSON.stringify(params.condition)); }
+    if (params.action !== undefined) { sets.push("action_json = ?"); values.push(JSON.stringify(params.action)); }
+    if (params.cooldownMs !== undefined) { sets.push("cooldown_ms = ?"); values.push(params.cooldownMs); }
+    if (params.enabled !== undefined) { sets.push("enabled = ?"); values.push(params.enabled ? 1 : 0); }
+
+    if (sets.length === 0) return;
+    values.push(id);
+    this.db.run(`UPDATE rules SET ${sets.join(", ")} WHERE id = ?`, values);
+  }
+
+  deleteRule(id: string): void {
+    this.db.run(`DELETE FROM rules WHERE id = ?`, [id]);
+  }
+
+  setRuleEnabled(id: string, enabled: boolean): void {
+    this.db.run(`UPDATE rules SET enabled = ? WHERE id = ?`, [enabled ? 1 : 0, id]);
+  }
+
+  setGroupEnabled(group: string, enabled: boolean): void {
+    this.db.run(`UPDATE rules SET enabled = ? WHERE group_name = ?`, [enabled ? 1 : 0, group]);
+  }
+
+  // ── rule_executions ──────────────────────────────────────────────────────
+
+  logRuleExecution(params: {
+    ruleId: string;
+    triggerDevice: string | null;
+    actionSummary: string;
+    success: boolean;
+  }): void {
+    const now = new Date().toISOString();
+    this.db.run(
+      `INSERT INTO rule_executions (rule_id, timestamp, trigger_device, action_summary, success)
+       VALUES (?, ?, ?, ?, ?)`,
+      [params.ruleId, now, params.triggerDevice, params.actionSummary, params.success ? 1 : 0]
+    );
+  }
+
+  getRuleExecutions(ruleId: string, limit: number): RuleExecutionRow[] {
+    return this.db
+      .query<RuleExecutionRow, [string, number]>(
+        `SELECT id, rule_id, timestamp, trigger_device, action_summary, success
+         FROM rule_executions WHERE rule_id = ? ORDER BY timestamp DESC LIMIT ?`
+      )
+      .all(ruleId, limit);
+  }
+
   // ── pruning ───────────────────────────────────────────────────────────────
 
   prune(retentionMs: number): void {
@@ -414,5 +570,6 @@ export class Store {
     this.db.run(`DELETE FROM state_changes WHERE timestamp < ?`, [cutoff]);
     this.db.run(`DELETE FROM commands WHERE timestamp < ?`, [cutoff]);
     this.db.run(`DELETE FROM events WHERE timestamp < ?`, [cutoff]);
+    this.db.run(`DELETE FROM rule_executions WHERE timestamp < ?`, [cutoff]);
   }
 }
