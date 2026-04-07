@@ -123,6 +123,7 @@ export function hasDurationCondition(condition: Condition): boolean {
 
 export class RuleEngine {
   private lastFired = new Map<string, number>(); // rule id → timestamp ms
+  private lastConditionResult = new Map<string, boolean>(); // rule id → last evaluated result
 
   constructor(
     private store: Store,
@@ -227,11 +228,16 @@ export class RuleEngine {
       const cooldownMs = row.cooldown_ms ?? 0;
 
       if (row.mode === "edge") {
-        // Edge rules only fire on actual transitions
-        if (newState === previousState) continue;
+        // Only evaluate if the changed device is referenced in the condition
+        const referenced = extractDeviceNames(condition);
+        if (referenced.size > 0 && !referenced.has(changedDevice)) continue;
 
         const result = evaluateCondition(condition, this.store);
-        if (!result) continue;
+        const prev = this.lastConditionResult.get(row.id) ?? false;
+        this.lastConditionResult.set(row.id, result);
+
+        // Edge rules only fire on false→true transition of the condition
+        if (!result || prev) continue;
 
         if (cooldownMs > 0 && this.isCoolingDown(row.id, cooldownMs)) continue;
 
