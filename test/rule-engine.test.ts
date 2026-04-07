@@ -402,6 +402,64 @@ describe("RuleEngine — cooldown", () => {
   });
 });
 
+// ── Edge rule scoping (regression: rules must not fire on unrelated device changes) ──
+
+describe("RuleEngine — edge rule scoping", () => {
+  it("does not fire when an unrelated device changes", async () => {
+    const { fn } = mockNotify();
+    const engine = new RuleEngine(store, mockClient(), fn);
+
+    store.upsertDevice({ name: "WaterEmpty", type: "adapter", state: true });
+    store.upsertDevice({ name: "Pump", type: "lever", state: false });
+    store.upsertDevice({ name: "LogLow", type: "adapter", state: false });
+
+    store.createRule({
+      id: "pump-on",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "WaterEmpty", state: true },
+      action: { type: "switch", lever: "Pump", value: true },
+      cooldownMs: null,
+    });
+
+    // LogLow changes — pump rule should NOT fire even though WaterEmpty is true
+    store.upsertDevice({ name: "LogLow", type: "adapter", state: true });
+    await engine.onStateChange("LogLow", true, false);
+    expect(store.getRuleExecutions("pump-on", 10)).toHaveLength(0);
+  });
+
+  it("only fires on false→true condition transition, not while condition stays true", async () => {
+    const { fn } = mockNotify();
+    const engine = new RuleEngine(store, mockClient(), fn);
+
+    store.upsertDevice({ name: "A1", type: "adapter", state: false });
+    store.upsertDevice({ name: "L1", type: "lever", state: false });
+
+    store.createRule({
+      id: "r1",
+      name: null,
+      group: null,
+      mode: "edge",
+      condition: { type: "device", name: "A1", state: true },
+      action: { type: "switch", lever: "L1", value: true },
+      cooldownMs: null,
+    });
+
+    // First: A1 goes true — should fire
+    store.upsertDevice({ name: "A1", type: "adapter", state: true });
+    await engine.onStateChange("A1", true, false);
+    expect(store.getRuleExecutions("r1", 10)).toHaveLength(1);
+
+    // A1 goes false then true again — should fire again (new false→true edge)
+    store.upsertDevice({ name: "A1", type: "adapter", state: false });
+    await engine.onStateChange("A1", false, true);
+    store.upsertDevice({ name: "A1", type: "adapter", state: true });
+    await engine.onStateChange("A1", true, false);
+    expect(store.getRuleExecutions("r1", 10)).toHaveLength(2);
+  });
+});
+
 // ── Helper functions ─────────────────────────────────────────────────────────
 
 describe("extractDeviceNames", () => {
