@@ -19,7 +19,8 @@ export async function pollOnce(
   levers: Lever[] | null,
   store: Store,
   notify: NotifyFn,
-  state: PollerState
+  state: PollerState,
+  onStateChange?: (device: string, newState: boolean, prevState: boolean) => Promise<void>
 ): Promise<void> {
   // Handle null (connection failure)
   if (adapters === null || levers === null) {
@@ -51,14 +52,14 @@ export async function pollOnce(
   for (const adapter of adapters) {
     seenNames.add(adapter.name);
     state.missedPolls.delete(adapter.name);
-    await processDevice(adapter.name, "adapter", adapter.state, false, store, notify);
+    await processDevice(adapter.name, "adapter", adapter.state, false, store, notify, onStateChange);
   }
 
   // Process levers
   for (const lever of levers) {
     seenNames.add(lever.name);
     state.missedPolls.delete(lever.name);
-    await processDevice(lever.name, "lever", lever.state, lever.springReturn, store, notify);
+    await processDevice(lever.name, "lever", lever.state, lever.springReturn, store, notify, onStateChange);
   }
 
   // Check for disappeared devices (only active ones)
@@ -86,7 +87,8 @@ async function processDevice(
   state: boolean,
   springReturn: boolean,
   store: Store,
-  notify: NotifyFn
+  notify: NotifyFn,
+  onStateChange?: (device: string, newState: boolean, prevState: boolean) => Promise<void>
 ): Promise<void> {
   const existing = store.getDevice(name);
 
@@ -119,6 +121,10 @@ async function processDevice(
           message: result.message,
         });
       }
+    }
+
+    if (onStateChange) {
+      await onStateChange(name, state, previousState);
     }
   }
 }

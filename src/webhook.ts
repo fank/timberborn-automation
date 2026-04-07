@@ -11,7 +11,8 @@ type NotifyFn = (event: {
 export function startWebhookServer(
   port: number,
   store: Store,
-  notify: NotifyFn
+  notify: NotifyFn,
+  onStateChange?: (device: string, newState: boolean, prevState: boolean) => Promise<void>
 ): ReturnType<typeof Bun.serve> {
   return Bun.serve({
     port,
@@ -55,6 +56,10 @@ export function startWebhookServer(
               message: result.message,
             });
           }
+        }
+
+        if (onStateChange) {
+          await onStateChange(adapterName, newState, previousState);
         }
       }
       store.upsertDevice({ name: adapterName, type: "adapter", state: newState });
