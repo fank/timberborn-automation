@@ -1,5 +1,6 @@
 import type { Store } from "./store";
 import { evaluateWatcher } from "./watcher";
+import { renderDashboard } from "./dashboard";
 
 type NotifyFn = (event: {
   watcherId?: string | null;
@@ -7,6 +8,12 @@ type NotifyFn = (event: {
   deviceName?: string | null;
   message: string;
 }) => Promise<void>;
+
+function json(data: unknown): Response {
+  return new Response(JSON.stringify(data), {
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
 export function startWebhookServer(
   port: number,
@@ -19,7 +26,52 @@ export function startWebhookServer(
     hostname: "127.0.0.1",
     async fetch(req) {
       const url = new URL(req.url);
-      // Timberborn HTTP Adapter default callback URLs:
+
+      // ── Dashboard & API ──────────────────────────────────────────────
+      if (req.method === "GET") {
+        if (url.pathname === "/") {
+          return new Response(renderDashboard(), {
+            headers: { "Content-Type": "text/html" },
+          });
+        }
+
+        if (url.pathname === "/api/devices") {
+          return json(store.listDevices());
+        }
+
+        if (url.pathname === "/api/rules") {
+          const rows = store.listRules();
+          const rules = rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            group: r.group_name,
+            mode: r.mode,
+            condition: JSON.parse(r.condition_json),
+            action: JSON.parse(r.action_json),
+            cooldownMs: r.cooldown_ms,
+            enabled: r.enabled === 1,
+            createdAt: r.created_at,
+          }));
+          return json(rules);
+        }
+
+        if (url.pathname === "/api/executions") {
+          // Get recent executions across all rules
+          const rows = store.db
+            .query<any, [number]>(
+              `SELECT id, rule_id, timestamp, trigger_device, action_summary, success
+               FROM rule_executions ORDER BY timestamp DESC LIMIT ?`
+            )
+            .all(50);
+          return json(rows);
+        }
+
+        if (url.pathname === "/api/events") {
+          return json(store.getRecentEvents(50));
+        }
+      }
+
+      // ── Webhook: Timberborn HTTP Adapter callbacks ───────────────────
       //   http://localhost:8081/on/{name}
       //   http://localhost:8081/off/{name}
       const pathMatch = url.pathname.match(/^\/(on|off)\/(.+)$/);
