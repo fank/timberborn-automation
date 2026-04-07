@@ -52,52 +52,52 @@ export function renderDashboard(): string {
   .p.fail { background: #4a1a1a; color: #ef9a9a; }
 
   /* ── Rule cards ─────────────────────────────────── */
-  .rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 14px; }
-  .rule-card { background: #16213e; border-radius: 8px; padding: 14px; border-left: 4px solid #2a4a7f; }
+  .rules-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+  .rule-card { background: #16213e; border-radius: 8px; padding: 12px 14px; border-left: 4px solid #2a4a7f; }
   .rule-card.disabled { opacity: 0.5; border-left-color: #4a1a1a; }
-  .rule-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-  .rule-id { font-weight: 700; color: #a0c4ff; font-size: 0.9rem; }
-  .rule-name { color: #888; font-size: 0.8rem; }
-  .rule-group { color: #666; font-size: 0.75rem; background: #0d1b2a; padding: 2px 6px; border-radius: 4px; }
-  .rule-cooldown { color: #666; font-size: 0.75rem; }
+  .rule-header { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+  .rule-id { font-weight: 700; color: #a0c4ff; font-size: 0.88rem; }
+  .rule-name { color: #888; font-size: 0.78rem; }
+  .rule-group { color: #888; font-size: 0.72rem; background: #0d1b2a; padding: 1px 6px; border-radius: 4px; }
+  .rule-cooldown { color: #666; font-size: 0.72rem; }
 
-  /* ── Visual flow ────────────────────────────────── */
-  .rule-flow { display: flex; align-items: center; gap: 0; min-height: 50px; }
-  .flow-cond { flex: 1; min-width: 0; }
-  .flow-arrow { flex-shrink: 0; padding: 0 10px; color: #4a6fa5; font-size: 1.4rem; }
-  .flow-action { flex-shrink: 0; }
+  /* ── Flow: vertical layout (condition block, then arrow, then action) */
+  .flow-section { margin-bottom: 6px; }
+  .flow-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.5px; color: #556; margin-bottom: 4px; }
+  .flow-arrow { color: #4a6fa5; font-size: 0.8rem; margin: 6px 0; padding-left: 4px; }
 
   /* Condition nodes */
-  .cnode { border-radius: 6px; padding: 6px 10px; font-size: 0.78rem; margin: 2px 0; }
-  .cnode.device { background: #1a2744; border: 1px solid #2a4a7f; color: #b0d0ff; display: inline-flex; align-items: center; gap: 6px; }
+  .cnode { border-radius: 5px; padding: 4px 8px; font-size: 0.78rem; margin: 2px 0; display: block; }
+  .cnode.device { background: #1a2744; border: 1px solid #2a4a7f; color: #b0d0ff; }
   .cnode.device .dev-state { font-weight: 700; }
   .cnode.device .dev-state.t { color: #66bb6a; }
   .cnode.device .dev-state.f { color: #999; }
-  .cnode.gate { background: #1a1a33; border: 1px solid #3a3a6e; padding: 6px 10px; }
-  .cnode.gate > .gate-label { color: #9fa8da; font-weight: 700; font-size: 0.72rem; text-transform: uppercase; margin-bottom: 4px; }
-  .cnode.gate > .gate-children { padding-left: 12px; border-left: 2px solid #3a3a6e; display: flex; flex-direction: column; gap: 3px; }
-  .cnode.neg { background: #2a1a1a; border: 1px solid #5a3a3a; display: inline-flex; align-items: center; gap: 4px; }
-  .cnode.neg > .neg-label { color: #ef9a9a; font-weight: 700; font-size: 0.72rem; }
-  .cnode.dur { background: #1a2a1a; border: 1px solid #3a5a3a; color: #a5d6a7; display: inline-flex; align-items: center; gap: 6px; }
+  .cnode.gate { background: #1a1a33; border: 1px solid #3a3a6e; padding: 5px 8px; }
+  .cnode.gate > .gate-label { color: #9fa8da; font-weight: 700; font-size: 0.7rem; text-transform: uppercase; margin-bottom: 3px; }
+  .cnode.gate > .gate-children { padding-left: 10px; border-left: 2px solid #3a3a6e; display: flex; flex-direction: column; gap: 2px; }
+  .cnode.neg { background: #2a1a1a; border: 1px solid #5a3a3a; padding: 3px 8px; }
+  .cnode.neg > .neg-label { color: #ef9a9a; font-weight: 700; font-size: 0.7rem; margin-right: 4px; }
+  .cnode.neg > .neg-child { display: inline; }
+  .cnode.dur { background: #1a2a1a; border: 1px solid #3a5a3a; color: #a5d6a7; }
   .cnode.grp { background: #1a1a2a; border: 1px solid #3a3a5a; color: #b0b0ff; }
 
   /* Action nodes */
-  .anode { border-radius: 6px; padding: 8px 12px; font-size: 0.78rem; }
+  .anode { border-radius: 5px; padding: 5px 10px; font-size: 0.78rem; display: block; margin: 2px 0; }
   .anode.switch { background: #1a2a1a; border: 1px solid #3a5a3a; }
   .anode.switch .lever-name { color: #a5d6a7; font-weight: 700; }
   .anode.switch .lever-dir { font-weight: 700; margin-left: 4px; }
   .anode.switch .lever-dir.aon { color: #66bb6a; }
   .anode.switch .lever-dir.aoff { color: #ef9a9a; }
   .anode.switch .lever-dir.track { color: #90caf9; }
-  .anode.notify { background: #2a2a1a; border: 1px solid #5a5a3a; color: #ffe082; }
+  .anode.notify { background: #2a2a1a; border: 1px solid #5a5a3a; color: #ffe082; word-break: break-word; }
   .anode.group-ctl { background: #1a1a2a; border: 1px solid #3a3a5a; color: #b0b0ff; }
-  .anode.seq { display: flex; flex-direction: column; gap: 4px; background: none; border: none; padding: 0; }
+  .anode.seq { display: flex; flex-direction: column; gap: 3px; background: none; border: none; padding: 0; }
 
   /* ── Exec mini-table inside rule card ───────────── */
-  .rule-execs { margin-top: 10px; border-top: 1px solid #1e2d4a; padding-top: 8px; }
-  .rule-execs summary { font-size: 0.75rem; color: #666; cursor: pointer; }
+  .rule-execs { margin-top: 8px; border-top: 1px solid #1e2d4a; padding-top: 6px; }
+  .rule-execs summary { font-size: 0.72rem; color: #666; cursor: pointer; }
   .rule-execs summary:hover { color: #90caf9; }
-  .rule-execs table { margin-top: 6px; }
+  .rule-execs table { margin-top: 4px; font-size: 0.75rem; }
 </style>
 </head>
 <body>
@@ -178,7 +178,7 @@ function renderCond(c) {
       return '<span class="cnode device">' + esc(c.name) +
         ' <span class="dev-state ' + (c.state ? 't' : 'f') + '">' + (c.state ? 'ON' : 'OFF') + '</span></span>';
     case 'not':
-      return '<span class="cnode neg"><span class="neg-label">NOT</span> ' + renderCond(c.condition) + '</span>';
+      return '<div class="cnode neg"><span class="neg-label">NOT</span> <span class="neg-child">' + renderCond(c.condition) + '</span></div>';
     case 'and':
     case 'or':
       return '<div class="cnode gate"><div class="gate-label">' + c.type.toUpperCase() + '</div>' +
@@ -246,11 +246,9 @@ function renderRuleCard(r, execs) {
       (r.cooldownMs ? '<span class="rule-cooldown">\\u23f1 ' + cdMs(r.cooldownMs) + '</span>' : '') +
       (r.name ? '<span class="rule-name">' + esc(r.name) + '</span>' : '') +
     '</div>' +
-    '<div class="rule-flow">' +
-      '<div class="flow-cond">' + renderCond(r.condition) + '</div>' +
-      '<div class="flow-arrow">\\u27a1</div>' +
-      '<div class="flow-action">' + renderAction(r.action) + '</div>' +
-    '</div>' +
+    '<div class="flow-section"><div class="flow-label">When</div>' + renderCond(r.condition) + '</div>' +
+    '<div class="flow-arrow">\\u2193 then</div>' +
+    '<div class="flow-section"><div class="flow-label">Do</div>' + renderAction(r.action) + '</div>' +
     execsHtml +
   '</div>';
 }
