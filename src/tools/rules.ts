@@ -29,6 +29,27 @@ function error(t: string) {
   return { content: [{ type: "text" as const, text: t }], isError: true as const };
 }
 
+// ── Action validation ────────────────────────────────────────────────────────
+
+/** Validate action tree. Returns error message or null if valid. */
+function validateAction(action: Action): string | null {
+  switch (action.type) {
+    case "switch":
+      if (action.value !== undefined && typeof action.value !== "boolean") {
+        return `switch action 'value' must be a boolean (true/false), got ${typeof action.value}: ${JSON.stringify(action.value)}`;
+      }
+      return null;
+    case "sequence":
+      for (const sub of action.actions) {
+        const err = validateAction(sub);
+        if (err) return err;
+      }
+      return null;
+    default:
+      return null;
+  }
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────────
 
 export function createRuleHandler(store: Store, args: Record<string, unknown>) {
@@ -43,6 +64,8 @@ export function createRuleHandler(store: Store, args: Record<string, unknown>) {
   const mode = args.mode as "edge" | "continuous";
   const condition = args.condition as Condition;
   const action = args.action as Action;
+  const actionErr = validateAction(action);
+  if (actionErr) return error(actionErr);
   const cooldownMs = parseCooldown(args.cooldown as string | undefined);
 
   store.createRule({ id, name, group, mode, condition, action, cooldownMs });
@@ -112,7 +135,12 @@ export function updateRuleHandler(store: Store, args: Record<string, unknown>) {
   if ("group" in args) params.group = (args.group as string | null) ?? null;
   if ("mode" in args) params.mode = args.mode as "edge" | "continuous";
   if ("condition" in args) params.condition = args.condition as Condition;
-  if ("action" in args) params.action = args.action as Action;
+  if ("action" in args) {
+    const action = args.action as Action;
+    const actionErr = validateAction(action);
+    if (actionErr) return error(actionErr);
+    params.action = action;
+  }
   if ("cooldown" in args) params.cooldownMs = parseCooldown(args.cooldown as string | undefined);
   if ("enabled" in args) params.enabled = args.enabled as boolean;
 

@@ -88,6 +88,34 @@ describe("createRuleHandler", () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain("already exists");
   });
+
+  it("rejects string value in switch action", () => {
+    const result = createRuleHandler(store, {
+      id: "bad-value",
+      mode: "edge",
+      condition: edgeCondition,
+      action: { type: "switch", lever: "L1", value: "off" },
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("must be a boolean");
+  });
+
+  it("rejects string value inside sequence action", () => {
+    const result = createRuleHandler(store, {
+      id: "bad-seq",
+      mode: "edge",
+      condition: edgeCondition,
+      action: {
+        type: "sequence",
+        actions: [
+          { type: "switch", lever: "L1", value: "on" },
+          { type: "notify", message: "test" },
+        ],
+      },
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("must be a boolean");
+  });
 });
 
 // ── listRulesHandler ──────────────────────────────────────────────────────────
@@ -224,6 +252,19 @@ describe("updateRuleHandler", () => {
   it("returns error for missing rule", () => {
     const result = updateRuleHandler(store, { id: "no-such", name: "x" });
     expect(result.isError).toBe(true);
+  });
+
+  it("rejects string value in switch action", () => {
+    const result = updateRuleHandler(store, {
+      id: "rule-upd",
+      action: { type: "switch", lever: "L1", value: "off" },
+    });
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("must be a boolean");
+    // Verify original action was NOT overwritten
+    const row = store.getRule("rule-upd");
+    const action = JSON.parse(row!.action_json);
+    expect(action.type).toBe("notify"); // still the original fixture action
   });
 });
 
