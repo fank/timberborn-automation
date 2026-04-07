@@ -236,8 +236,23 @@ export class RuleEngine {
         const prev = this.lastConditionResult.get(row.id) ?? false;
         this.lastConditionResult.set(row.id, result);
 
-        // Edge rules only fire on false→true transition of the condition
-        if (!result || prev) continue;
+        if (!result) continue;
+
+        // Fire on false→true edge, OR if the lever is out of sync with the action
+        // (handles manual interventions and competing rules)
+        const isEdge = !prev;
+        const needsResync = action.type === "switch" || (action.type === "sequence" && action.actions.some(a => a.type === "switch"))
+          ? (() => {
+              const switchAction = action.type === "switch" ? action : action.actions.find(a => a.type === "switch")!;
+              if (switchAction.type !== "switch") return false;
+              const lever = this.store.getDevice(switchAction.lever);
+              if (lever === null) return false;
+              const targetState = Boolean(switchAction.value ?? true);
+              return (lever.currentState === 1) !== targetState;
+            })()
+          : false;
+
+        if (!isEdge && !needsResync) continue;
 
         if (cooldownMs > 0 && this.isCoolingDown(row.id, cooldownMs)) continue;
 
