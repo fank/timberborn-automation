@@ -450,8 +450,8 @@ export class Store {
   }): void {
     const now = new Date().toISOString();
     this.db.run(
-      `INSERT INTO rules (id, name, group_name, condition_json, action_json, cooldown_ms, enabled, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?)`,
+      `INSERT INTO rules (id, name, group_name, mode, condition_json, action_json, cooldown_ms, enabled, created_at)
+       VALUES (?, ?, ?, 'edge', ?, ?, ?, 1, ?)`,
       [
         params.id,
         params.name,
