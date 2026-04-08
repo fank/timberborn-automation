@@ -164,6 +164,29 @@ export class RuleEngine {
     }
   }
 
+  async resetRule(ruleId: string): Promise<void> {
+    this.lastConditionResult.delete(ruleId);
+    this.lastFired.delete(ruleId);
+
+    const row = this.store.getRule(ruleId);
+    if (row === null || row.enabled === 0) return;
+
+    const condition: Condition = JSON.parse(row.condition_json);
+    const result = evaluateCondition(condition, this.store);
+    this.lastConditionResult.set(ruleId, result);
+
+    if (!result) return;
+
+    const action: Action = JSON.parse(row.action_json);
+    if (!this.needsResync(action)) return;
+
+    const cooldownMs = row.cooldown_ms ?? 0;
+    if (cooldownMs > 0 && this.isCoolingDown(ruleId, cooldownMs)) return;
+
+    this.lastFired.set(ruleId, Date.now());
+    await this.executeAction(action, ruleId, null);
+  }
+
   isCoolingDown(ruleId: string, cooldownMs: number): boolean {
     const last = this.lastFired.get(ruleId);
     if (last === undefined) return false;

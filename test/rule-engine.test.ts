@@ -596,6 +596,124 @@ describe("RuleEngine.initialize — startup resync", () => {
 
 });
 
+// ── RuleEngine.resetRule() ───────────────────────────────────────────────────
+
+describe("RuleEngine.resetRule — clears stale tracking on rule update", () => {
+  it("resyncs lever after condition is updated", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: false });
+    store.upsertDevice({ name: "Lever", type: "lever", state: false });
+
+    // Create rule: Sensor=true → Lever on
+    store.createRule({
+      id: "r1",
+      name: null,
+      group: null,
+      condition: { type: "device", name: "Sensor", state: true },
+      action: { type: "switch", lever: "Lever", value: true },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+    expect(switches).toHaveLength(0); // Sensor=false, no resync
+
+    // Update rule condition to Sensor=false → Lever on (inverted)
+    store.updateRule("r1", {
+      condition: { type: "device", name: "Sensor", state: false },
+    });
+
+    // resetRule should detect condition is now true and lever is out of sync
+    await engine.resetRule("r1");
+
+    expect(switches).toEqual(["on:Lever"]);
+  });
+
+  it("does not fire if lever already matches after condition update", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: true });
+    store.upsertDevice({ name: "Lever", type: "lever", state: true });
+
+    store.createRule({
+      id: "r1",
+      name: null,
+      group: null,
+      condition: { type: "device", name: "Sensor", state: true },
+      action: { type: "switch", lever: "Lever", value: true },
+      cooldownMs: null,
+    });
+
+    await engine.initialize();
+    expect(switches).toHaveLength(0);
+
+    // Reset without changing anything — should not fire
+    await engine.resetRule("r1");
+    expect(switches).toHaveLength(0);
+  });
+
+  it("clears lastConditionResult so next state change triggers a fresh edge", async () => {
+    const { fn } = mockNotify();
+    const switches: string[] = [];
+    const client = {
+      switchOn: async (name: string) => { switches.push(`on:${name}`); return true; },
+      switchOff: async (name: string) => { switches.push(`off:${name}`); return true; },
+    };
+    const engine = new RuleEngine(store, client, fn);
+
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: true });
+    store.upsertDevice({ name: "Lever", type: "lever", state: false });
+
+    store.createRule({
+      id: "r1",
+      name: null,
+      group: null,
+      condition: { type: "device", name: "Sensor", state: true },
+      action: { type: "switch", lever: "Lever", value: true },
+      cooldownMs: null,
+    });
+
+    // Initialize seeds baseline and resyncs
+    await engine.initialize();
+    expect(switches).toEqual(["on:Lever"]);
+    switches.length = 0;
+
+    // Sensor goes false then true — normal edge fires
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: false });
+    await engine.onStateChange("Sensor", false, true);
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: true });
+    store.upsertDevice({ name: "Lever", type: "lever", state: false });
+    await engine.onStateChange("Sensor", true, false);
+    expect(switches).toEqual(["on:Lever"]);
+    switches.length = 0;
+
+    // Now reset the rule — clears tracking
+    await engine.resetRule("r1");
+    // resetRule resynced already, clear
+    switches.length = 0;
+
+    // Sensor goes false then true again — should fire as fresh edge
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: false });
+    await engine.onStateChange("Sensor", false, true);
+    store.upsertDevice({ name: "Sensor", type: "adapter", state: true });
+    store.upsertDevice({ name: "Lever", type: "lever", state: false });
+    await engine.onStateChange("Sensor", true, false);
+    expect(switches).toEqual(["on:Lever"]);
+  });
+});
+
 describe("hasDurationCondition", () => {
   it("returns true when any node is a duration condition", () => {
     const cond: Condition = {

@@ -281,10 +281,18 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     case "list_watchers": return listWatchersHandler(store);
     case "delete_watcher": return deleteWatcherHandler(store, a);
     case "get_status": return getStatusHandler(store, pollerState);
-    case "create_rule": return createRuleHandler(store, a);
+    case "create_rule": {
+      const result = createRuleHandler(store, a);
+      await ruleEngine.resetRule(a.id as string);
+      return result;
+    }
     case "list_rules": return listRulesHandler(store, a);
     case "get_rule": return getRuleHandler(store, a);
-    case "update_rule": return updateRuleHandler(store, a);
+    case "update_rule": {
+      const result = updateRuleHandler(store, a);
+      await ruleEngine.resetRule(a.id as string);
+      return result;
+    }
     case "delete_rule": return deleteRuleHandler(store, a);
     case "test_rule": return testRuleHandler(store, a);
     case "enable_rules": return enableRulesHandler(store, a);
