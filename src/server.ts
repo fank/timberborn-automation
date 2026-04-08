@@ -300,10 +300,17 @@ startWebhookServer(config.poller.webhookPort, store, (e) => notifier.notify(e), 
 await ruleEngine.initialize();
 
 async function pollLoop() {
+  let wasConnected = true;
   while (true) {
     const adapters = await tbClient.getAdapters();
     const levers = await tbClient.getLevers();
     await pollOnce(adapters, levers, store, (e) => notifier.notify(e), pollerState, (d, n, p) => ruleEngine.onStateChange(d, n, p));
+
+    // Re-initialize rules after reconnect (e.g. save reload) to resync lastConditionResult
+    if (pollerState.connected && !wasConnected) {
+      await ruleEngine.initialize();
+    }
+    wasConnected = pollerState.connected;
 
     const durationResults = evaluateDurationWatchers(store);
     for (const result of durationResults) {
