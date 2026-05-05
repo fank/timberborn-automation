@@ -15,6 +15,6 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "yaml": "^2.8.3"
+    "yaml": "^2.8.4"
   }
 }
